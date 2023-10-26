@@ -1,0 +1,33 @@
+import psycopg2
+
+# Source database connection settings
+source_db_settings = {
+    'dbname': 'airflow_metadata',
+    'user': 'your_username',
+    'password': 'your_password',
+    'host': 'source_db_host',
+    'port': 5432
+}
+
+# Target database connection settings
+target_db_settings = {
+    'dbname': 'target_database',
+    'user': 'your_username',
+    'password': 'your_password',
+    'host': 'target_db_host',
+    'port': 5432
+}
+
+# Export data from the source database to a CSV file
+with psycopg2.connect(**source_db_settings) as source_conn, open('dag_run_data.csv', 'w') as csv_file:
+    with source_conn.cursor() as source_cur:
+        source_cur.copy_expert("COPY (SELECT * FROM dag_run) TO STDOUT WITH CSV HEADER", csv_file)
+
+# Import data from the CSV file into the target database
+with psycopg2.connect(**target_db_settings) as target_conn:
+    with target_conn.cursor() as target_cur:
+        with open('dag_run_data.csv', 'r') as csv_file:
+            target_cur.copy_expert("COPY dag_run_copy FROM STDIN WITH CSV HEADER", csv_file)
+
+# Clean up and commit changes
+target_conn.commit()
